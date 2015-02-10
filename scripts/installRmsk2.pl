@@ -1,0 +1,175 @@
+#!/usr/bin/env perl
+
+# Modified kent doRepeatMasker.pl
+
+# $Id: doRepeatMasker.pl,v 1.14 2009/03/19 16:15:29 hiram Exp $
+
+use Getopt::Long;
+use warnings;
+use strict;
+use Carp;
+#use FindBin qw($Bin);
+#use lib "$Bin";
+#use HgAutomate;
+#use HgRemoteScript;
+#use HgStepManager;
+
+# Hardcoded command path:
+#my $RepeatMaskerPath = "/usr/local/RepeatMasker";
+#my $RepeatMasker = "$RepeatMaskerPath/RepeatMasker";
+#my $RepeatMaskerEngine = "-engine ncbi -s";
+# Let parasol pick defaults
+#my $parasolRAM = "";
+
+# Option variable names, both common and peculiar to this script:
+# use vars @HgAutomate::commonOptionVars;
+# use vars @HgStepManager::optionVars;
+# use vars qw/
+#     $opt_buildDir
+#     $opt_species
+#     $opt_unmaskedSeq
+#     $opt_customLib
+#     $opt_useHMMER
+#     $opt_useRMBlastn
+#     $opt_splitTables
+#     $opt_noSplit
+#     $opt_updateTable
+#     /;
+
+# Specify the steps supported with -continue / -stop:
+# my $stepper = new HgStepManager(
+#     [ { name => 'cluster', func => \&doCluster },
+#       { name => 'cat',     func => \&doCat },
+#       { name => 'mask',    func => \&doMask },
+#       { name => 'install', func => \&doInstall },
+#       { name => 'cleanup', func => \&doCleanup },
+#     ]
+				);
+
+# # Option defaults:
+# my $dbHost = 'hgwdev';
+# my $unmaskedSeq = "\$db.unmasked.2bit";
+# my $defaultSpecies = 'scientificName from dbDb';
+
+# my $base = $0;
+# $base =~ s/^(.*\/)?//;
+
+sub usage {
+  # Usage / help / self-documentation:
+  my ($status, $detailed) = @_;
+  # Basic help (for incorrect usage):
+  print STDERR "
+usage: $base db
+# options:
+# ";
+#   print STDERR $stepper->getOptionHelp();
+#   print STDERR <<_EOF_
+#     -buildDir dir         Use dir instead of default
+#                           $HgAutomate::clusterData/\$db/$HgAutomate::trackBuild/RepeatMasker.\$date
+#                           (necessary when continuing at a later date).
+#     -species sp           Use sp (which can be quoted genus and species, or
+#                           a common name that RepeatMasker recognizes.
+#                           Default: $defaultSpecies.
+#     -unmaskedSeq seq.2bit Use seq.2bit as the unmasked input sequence instead
+#                           of default ($unmaskedSeq).
+#     -customLib lib.fa     Use custom repeat library instead of RepeatMaskers\'s.
+#     -useRMBlastn          Use NCBI rmblastn instead of crossmatch
+#     -useHMMER             Use hmmer instead of crossmatch ( currently for human only )
+#     -updateTable          load into table name rmskUpdate (default: rmsk)
+#     -splitTables          split the _rmsk tables (default is not split)
+#     -noSplit              default behavior, this option no longer required.
+# _EOF_
+#   ;
+#   print STDERR &HgAutomate::getCommonOptionHelp('dbHost' => $dbHost,
+# 						'workhorse' => '',
+# 						'bigClusterHub' => '');
+  print STDERR "
+Just install portion of kent doRepeatMaster.pl.
+Installs \$db.rmsk.fa, a RepeatMasked sequence into \$db.rmsk
+
+Automates UCSC's RepeatMasker process for genome database \$db.  Steps:
+    cluster: Do a cluster run of RepeatMasker on 500kb sequence chunks.
+    cat:     Concatenate the cluster run results into \$db.sorted.fa.out.
+    mask:    Create a \$db.2bit masked by \$db.sorted.fa.out.
+    install: Load \$db.sorted.fa.out into the rmsk table (possibly split) in \$db,
+             install \$db.2bit in $HgAutomate::clusterData/\$db/, and if \$db is
+             chrom-based, split \$db.sorted.fa.out into per-chrom files.
+    cleanup: Removes or compresses intermediate files.
+All operations are performed in the build directory which is
+$HgAutomate::clusterData/\$db/$HgAutomate::trackBuild/RepeatMasker.\$date unless -buildDir is given.
+Run -help to see what files are required for this script.
+";
+  # Detailed help (-help):
+  print STDERR "
+Assumptions:
+1. $HgAutomate::clusterData/\$db/\$db.unmasked.2bit contains sequence for
+   database/assembly \$db.  (This can be overridden with -unmaskedSeq.)
+" if ($detailed);
+  print "\n";
+  exit $status;
+}
+
+sub doInstall {
+
+export db=$db
+
+hgLoadOut \$db \$db.fa.out
+hgLoadOut -verbose=2 -tabFile=\$db.rmsk.tab -table=rmsk -nosplit \$db \$db.fa.out 2> \$db.bad.records.txt
+
+# construct bbi files for assembly hub
+rm -fr classBed classBbi rmskClass
+mkdir classBed classBbi rmskClass
+sort -k12,12 \$db.rmsk.tab \\
+  | splitFileByColumn -ending=tab  -col=12 -tab stdin rmskClass
+for T in SINE LINE LTR DNA Simple Low_complexity Satellite
+do
+    fileCount=`(ls rmskClass/\${T}*.tab 2> /dev/null || true) | wc -l`
+    if [ "\$fileCount" -gt 0 ]; then
+       echo "working: "`ls rmskClass/\${T}*.tab | xargs echo`
+       \$HOME/kent/src/hg/utils/automation/rmskBed6+10.pl rmskClass/\${T}*.tab \\
+        | sort -k1,1 -k2,2n > classBed/\$db.rmsk.\${T}.bed
+       bedToBigBed -tab -type=bed6+10 -as=\$HOME/kent/src/hg/lib/rmskBed6+10.as \\
+         classBed/\$db.rmsk.\${T}.bed ../../chrom.sizes \\
+           classBbi/\$db.rmsk.\${T}.bb
+    fi
+done
+fileCount=`(ls rmskClass/*RNA.tab 2> /dev/null || true) | wc -l`
+if [ "\$fileCount" -gt 0 ]; then
+  echo "working: "`ls rmskClass/*RNA.tab | xargs echo`
+  \$HOME/kent/src/hg/utils/automation/rmskBed6+10.pl rmskClass/*RNA.tab \\
+     | sort -k1,1 -k2,2n > classBed/\$db.rmsk.RNA.bed
+  bedToBigBed -tab -type=bed6+10 -as=\$HOME/kent/src/hg/lib/rmskBed6+10.as \\
+     classBed/\$db.rmsk.RNA.bed ../../chrom.sizes \\
+        classBbi/\$db.rmsk.RNA.bb
+fi
+echo "working: "`ls rmskClass/*.tab | egrep -v "/SIN|/LIN|/LT|/DN|/Simple|/Low_complexity|/Satellit|RNA.tab" | xargs echo`
+\$HOME/kent/src/hg/utils/automation/rmskBed6+10.pl `ls rmskClass/*.tab | egrep -v "/SIN|/LIN|/LT|/DN|/Simple|/Low_complexity|/Satellit|RNA.tab"` \\
+        | sort -k1,1 -k2,2n > classBed/\$db.rmsk.Other.bed
+bedToBigBed -tab -type=bed6+10 -as=\$HOME/kent/src/hg/lib/rmskBed6+10.as \\
+  classBed/\$db.rmsk.Other.bed ../../chrom.sizes \\
+    classBbi/\$db.rmsk.Other.bb
+
+export bbiCount=`for F in classBbi/*.bb; do bigBedInfo \$F | grep itemCount; done | awk '{print \$NF}' | sed -e 's/,//g' | ave stdin | grep total | awk '{print \$2}' | sed -e 's/.000000//'`
+
+export firstTabCount=`cat \$db.rmsk.tab | wc -l`
+export splitTabCount=`cat rmskClass/*.tab | wc -l`
+
+if [ "\$firstTabCount" -ne \$bbiCount ]; then
+   echo "\$db.rmsk.tab count: \$firstTabCount, split class tab file count: \$splitTabCount, bbi class item count:  \$bbiCount"
+   echo "ERROR: did not account for all items in rmsk class bbi construction" 1>&2
+   exit 255
+fi
+wc -l classBed/*.bed > \$db.class.profile.txt
+wc -l rmskClass/*.tab >> \$db.class.profile.txt
+rm -fr rmskClass classBed \$db.rmsk.tab
+_EOF_
+  );
+}
+
+##############
+# Main
+&checkOptions();
+#&usage(1) if (scalar(@ARGV) != 1);
+($db) = @ARGV
+
+&doInstall();

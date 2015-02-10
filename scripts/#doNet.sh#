@@ -1,0 +1,4 @@
+#! /bin/bash
+
+chainNet all.pre.chain -minSpace=1 ci2.sizes cs2.sizes stdout /dev/null | netSyntenic stdin noClass.net
+

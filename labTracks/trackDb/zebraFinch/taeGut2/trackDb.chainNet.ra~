@@ -1,0 +1,58 @@
+
+track chainNetLonStrDom1
+shortLabel Bengalese Chain/Net
+chainMinScore 5000
+chainLinearGap loose
+matrix 16 91,-90,-25,-100,-90,100,-100,-25,-25,-100,100,-90,-100,-25,-90,91
+
+    track chainLonStrDom1
+    shortLabel Bengalese chain
+    longLabel L. striata dom1 chain
+    group compGeno
+    priority 125
+    visibility hide
+    color 100,50,0
+    altColor 255,240,200
+    spectrum on
+    type chain lonStrDom1
+    otherDb lonStrDom1
+
+    track netLonStrDom1
+    shortLabel Bengalese net
+    longLabel L. striata dom1 net
+    group compGeno
+    priority 134
+    visibility dense
+    spectrum on
+    type netAlign lonStrDom1 chainLonStrDom1
+    otherDb lonStrDom1
+
+track chainNetGeoFor1 override
+priority 200.93
+visibility dense
+
+track chainNetMelUnd1 override
+priority 204.93
+visibility dense
+
+track chainNetMelGal1 override
+priority 205.3
+visibility dense
+chainMinScore 3000
+chainLinearGap medium
+
+track chainNetGalGal4 override
+priority 210.3
+visibility dense
+
+track chainNetFalPer1 override
+priority 214.3
+visibility dense
+
+track chainNetFalChe1 override
+priority 216.3
+visibility dense
+
+track chainNetHg19 override
+priority 580.3
+visibility dense
