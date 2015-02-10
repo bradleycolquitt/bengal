@@ -1,0 +1,4 @@
+#! /bin/bash
+
+gfServer start -stepSize=5 bengal 17779 /gbdb/lonStrDom1/lonStrDom1.2bit &
+gfServer start -stepSize=5 bengal 17849 /gbdb/taeGut2/taeGut2.2bit &
