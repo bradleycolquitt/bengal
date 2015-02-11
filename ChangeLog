@@ -1,0 +1,10 @@
+#### 2/10/15 #########
+Added rmsk and simpleRepeat data to lonStrDom1 db using stripped down versions of kent doRepeatMasker and doSimpleRepeat.
+	New scripts are installRmsk.sh and installSimpleRepeats.sh
+
+	For simpleRepeat added previously computed bed located in lonStrDom1/bed/simpleRepeats/
+
+Added chainLonStrDom1, netLonStrDom1 to taeGut2
+Fixed trackDb.chainNet.ra to display
+	Note: appears to only display chain 
+
