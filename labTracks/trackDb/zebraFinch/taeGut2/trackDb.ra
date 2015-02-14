@@ -55,3 +55,14 @@ shortLabel lonStrDom1 Maf
 longLabel LASTZ alignment to lonStrDom1 (score >10K)
 speciesOrder lonStrDom1
 
+track mafLonStrDom1Cov
+type wigMaf 0.0 1.0
+group lab
+visibility full
+viewLimits 0:1
+autoScale off
+summary mafLonStrDom1CovSummary
+shortLabel lonStrDom1 Maf Filtered
+longLabel LASTZ alignment to lonStrDom1 single2cov filtered
+speciesOrder lonStrDom1
+
